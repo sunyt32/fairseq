@@ -11,6 +11,7 @@ import threading
 import torch
 import torch.nn as nn
 from torch.nn.parallel import DistributedDataParallel
+import torch.distributed as dist
 
 from fairseq.distributed import (
     DistributedTimeoutWrapper,
@@ -28,6 +29,53 @@ try:
     import gossip
 except ImportError:
     _GOSSIP_DISABLED = True
+
+
+def fp32_compress_hook(
+    process_group: dist.ProcessGroup,
+    bucket: dist.GradBucket,
+) -> torch.futures.Future[torch.Tensor]:
+    """
+    Compress by casting ``GradBucket`` to ``torch.float32`` divided by process group size.
+
+    This DDP communication hook implements a simple gradient compression
+    approach that casts ``GradBucket`` tensor to half-precision floating-point format (``torch.float16``)
+    and then divides it by the process group size.
+    It allreduces those ``float32`` gradient tensors. Once compressed gradient
+    tensors are allreduced, the chained callback ``decompress`` casts it back to the input data type (such as ``float32``).
+
+    Example::
+        >>> # xdoctest: +SKIP
+        >>> ddp_model.register_comm_hook(process_group, fp16_compress_hook)
+    """
+    group_to_use = process_group if process_group is not None else dist.group.WORLD
+    world_size = group_to_use.size()
+
+    buffer = (
+        cast(Tuple[torch.Tensor, ...], bucket)[0]
+        if isinstance(bucket, tuple)
+        else bucket.buffer()
+    )
+    compressed_tensor = buffer.to(torch.float32).div_(world_size)
+
+    def decompress(fut):
+        decompressed_tensor = buffer
+        # Decompress in place to reduce the peak memory.
+        # See: https://github.com/pytorch/pytorch/issues/45968
+        value = fut if isinstance(fut, torch.Tensor) else fut.value()[0]
+        decompressed_tensor.copy_(value)
+        return decompressed_tensor
+
+    if torch._utils.is_compiling():
+        grad = dist._functional_collectives.all_reduce(
+            compressed_tensor, "sum", group_to_use
+        )
+        return decompress(grad)
+    else:
+        fut = dist.all_reduce(
+            compressed_tensor, group=group_to_use, async_op=True
+        ).get_future()
+        return fut.then(decompress)
 
 
 def DistributedFairseqModel(args, model, process_group, device):
@@ -64,6 +112,8 @@ def DistributedFairseqModel(args, model, process_group, device):
             process_group=process_group,
             find_unused_parameters=args.find_unused_parameters,
         )
+        from fairseq.distributed.utils import get_data_parallel_group
+        wrapped_model.register_comm_hook(get_data_parallel_group(), fp32_compress_hook)
         # forward missing getattr and state_dict/load_state_dict to orig model
         wrapped_model = ModuleProxyWrapper(wrapped_model)
     elif args.ddp_backend in {"no_c10d", "legacy_ddp"}:
