@@ -33,6 +33,9 @@ class FairseqShampooConfig(FairseqDataclass):
     shampoo_update_freq: int = field(
         default=16, metadata={"help": "update shampoo matrix every N steps"}
     )
+    shampoo_max_preconditioner_dim: int = field(
+        default=1024, metadata={"help": "max dimension of preconditioner"}
+    )
     weight_decay: float = field(default=0.0, metadata={"help": "weight decay"})
     # TODO common vars below in parent
     tpu: bool = II("common.tpu")
@@ -52,6 +55,7 @@ class FairseqShampoo(FairseqOptimizer):
             epsilon=cfg.adam_eps,
             weight_decay=cfg.weight_decay,
             precondition_frequency=cfg.shampoo_update_freq,
+            max_preconditioner_dim=cfg.shampoo_max_preconditioner_dim,
             grafting_config=AdamGraftingConfig(
                 beta2=eval(cfg.adam_betas)[1],
                 epsilon=cfg.adam_eps,
