@@ -86,6 +86,14 @@ class FairseqShampoo(FairseqOptimizer):
             value["exp_avg_sq"] /= total_gpus
             dist.all_reduce(value["exp_avg"], op=dist.ReduceOp.SUM)
             dist.all_reduce(value["exp_avg_sq"], op=dist.ReduceOp.SUM)
+            
+    @property
+    def supports_memory_efficient_fp16(self):
+        return True
+
+    @property
+    def supports_flat_params(self):
+        return True
 
 class Shampoo(torch.optim.Optimizer):
     def __init__(
