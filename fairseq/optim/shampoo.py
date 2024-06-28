@@ -16,6 +16,8 @@ from fairseq.dataclass import FairseqDataclass
 from fairseq.optim import FairseqOptimizer, register_optimizer
 from omegaconf import II, DictConfig
 
+from distributed_shampoo.distributed_shampoo import DistributedShampoo
+from distributed_shampoo.shampoo_types import AdamGraftingConfig
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +44,20 @@ class FairseqShampooConfig(FairseqDataclass):
 class FairseqShampoo(FairseqOptimizer):
     def __init__(self, cfg: DictConfig, params):
         super().__init__(cfg)
-        self._optimizer = Shampoo(params, **self.optimizer_config)
+        self.adam_betas = eval(cfg.adam_betas)
+        self._optimizer = DistributedShampoo(
+            params,
+            lr=cfg.lr[0],
+            betas=eval(cfg.adam_betas),
+            epsilon=cfg.adam_eps,
+            weight_decay=cfg.weight_decay,
+            precondition_frequency=cfg.shampoo_update_freq,
+            grafting_config=AdamGraftingConfig(
+                beta2=eval(cfg.adam_betas)[1],
+                epsilon=cfg.adam_eps,
+            ),
+        )
+        # self._optimizer = Shampoo(params, **self.optimizer_config)
 
     @property
     def optimizer_config(self):

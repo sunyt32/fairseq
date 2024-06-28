@@ -136,6 +136,7 @@ except ImportError:
     pass
 
 
+dependency_links = ["git+https://github.com/sunyt32/optimizers.git#egg=optimizers"]
 if "READTHEDOCS" in os.environ:
     # don't build extensions when generating docs
     extensions = []
@@ -143,12 +144,7 @@ if "READTHEDOCS" in os.environ:
         del cmdclass["build_ext"]
 
     # use CPU build of PyTorch
-    dependency_links = [
-        "https://download.pytorch.org/whl/cpu/torch-1.7.0%2Bcpu-cp36-cp36m-linux_x86_64.whl"
-    ]
-else:
-    dependency_links = []
-
+    dependency_links.append("https://download.pytorch.org/whl/cpu/torch-1.7.0%2Bcpu-cp36-cp36m-linux_x86_64.whl")
 
 if "clean" in sys.argv[1:]:
     # Source: https://bit.ly/2NLVsgE
@@ -200,6 +196,7 @@ def do_setup(package_data):
             "sacrebleu>=1.4.12",
             "torch",
             "tqdm",
+            "distributed_shampoo @ git+https://github.com/sunyt32/optimizers.git@main#egg=optimizers"
         ],
         dependency_links=dependency_links,
         packages=find_packages(
