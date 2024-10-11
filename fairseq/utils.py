@@ -22,12 +22,12 @@ import torch.nn.functional as F
 from torch import Tensor
 
 
-try:
-    from amp_C import multi_tensor_l2norm
+# try:
+#     from amp_C import multi_tensor_l2norm
 
-    multi_tensor_l2norm_available = True
-except ImportError:
-    multi_tensor_l2norm_available = False
+#     multi_tensor_l2norm_available = True
+# except ImportError:
+multi_tensor_l2norm_available = False
 
 try:
     import torch_xla.core.xla_model as xm
