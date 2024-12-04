@@ -196,6 +196,7 @@ def do_setup(package_data):
             "sacrebleu>=1.4.12",
             "torch",
             "tqdm",
+            "einops",
             "distributed_shampoo @ git+https://github.com/sunyt32/optimizers.git@main#egg=optimizers"
         ],
         dependency_links=dependency_links,
