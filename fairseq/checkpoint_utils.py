@@ -10,6 +10,7 @@ import functools
 import logging
 import os
 import re
+import tempfile
 import traceback
 from collections import OrderedDict
 from typing import Any, Dict, Optional, Union
@@ -25,6 +26,7 @@ from fairseq.distributed import utils as dist_utils
 from fairseq.file_io import PathManager, torch_load_cpu
 from fairseq.models import FairseqDecoder, FairseqEncoder
 from fairseq import moe_checkpoint_utils
+from fairseq import blob_utils
 from omegaconf import DictConfig, open_dict, OmegaConf
 
 logger = logging.getLogger(__name__)
@@ -112,8 +114,12 @@ def save_checkpoint(
     # if hasattr(save_checkpoint, "best"):
     #     extra_state.update({"best": save_checkpoint.best})
 
+    if cfg.blob_save_dir.startswith("azure://"):
+        _tmp_save_dir = tempfile.mkdtemp()
+    else:
+        _tmp_save_dir = cfg.save_dir
     checkpoints = [
-        os.path.join(cfg.save_dir, fn) for fn, cond in checkpoint_conds.items() if cond
+        os.path.join(_tmp_save_dir, fn) for fn, cond in checkpoint_conds.items() if cond
     ]
     if len(checkpoints) > 0:
         if PathManager.islink(checkpoints[0]):
@@ -142,6 +148,13 @@ def save_checkpoint(
                     src=re.sub("rank-[0-9]+", "shared", checkpoints[0]),
                     dest=re.sub("rank-[0-9]+", "shared", cp),
                 )
+
+        if cfg.blob_save_dir.startswith("azure://"):
+            for filename in os.listdir(_tmp_save_dir):
+                src_file = os.path.join(_tmp_save_dir, filename)
+                dest_file = os.path.join(cfg.blob_save_dir, filename)
+                logger.info(f"Upload blob: {src_file} to {dest_file}")
+                blob_utils.copyfile(src_file, dest_file)
 
         write_timer.stop()
         logger.info(
