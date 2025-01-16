@@ -405,7 +405,7 @@ class AzureUploader(CloudUploader):
                         progress_hook=lambda bytes_transferred, _: pbar.update(
                             bytes_transferred),
                         overwrite=True,
-                        max_concurrency=8)
+                        max_concurrency=32)
             self.clear_local(local=local_filename)
 
         _upload_file()
@@ -455,7 +455,7 @@ class AzureUploader(CloudUploader):
                         progress_hook=lambda bytes_transferred, _: pbar.update(
                             bytes_transferred),
                         overwrite=True,
-                        max_concurrency=8)
+                        max_concurrency=32)
             if not keep_local:
                 self.clear_local(local=local_filename)
 
@@ -630,7 +630,7 @@ class AzureDownloader(CloudDownloader):
         blob_client = container_client.get_blob_client(blob=relative_path)
         local_tmp = local + '.tmp'
         with open(local_tmp, 'wb') as my_blob:
-            blob_data = blob_client.download_blob(max_concurrency=8)
+            blob_data = blob_client.download_blob(max_concurrency=32)
             blob_data.readinto(my_blob)
         os.rename(local_tmp, local)
 
@@ -691,7 +691,8 @@ def _get_storage() -> AzureStorage:
     global _storage_instance
     if _storage_instance is None:
         _storage_instance = AzureStorage(debug=False)
-        logging.getLogger("azure.storage.common.storageclient").setLevel(logging.WARNING)
+        logging.getLogger("azure.core.pipeline.policies.http_logging_policy").setLevel(
+            logging.WARNING)
     return _storage_instance
 
 
