@@ -1,5 +1,6 @@
 # Yaoyao, 2025
 
+import logging
 from typing import Optional
 import os
 import tempfile
@@ -690,6 +691,7 @@ def _get_storage() -> AzureStorage:
     global _storage_instance
     if _storage_instance is None:
         _storage_instance = AzureStorage(debug=False)
+        logging.getLogger("azure.storage.common.storageclient").setLevel(logging.WARNING)
     return _storage_instance
 
 
