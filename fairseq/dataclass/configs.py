@@ -549,7 +549,7 @@ class CheckpointConfig(FairseqDataclass):
         default="checkpoints", metadata={"help": "path to save checkpoints"}
     )
     blob_save_dir: str = field(
-        default="", metadata={"help": "blob path to save checkpoints: azure://<container>/<save-dir-path>"}
+        default="", metadata={"help": "blob path to save checkpoints: azure://<blob-name>/<container-name>/<save-dir-path>"}
     )
     restore_file: str = field(
         default="checkpoint_last.pt",
