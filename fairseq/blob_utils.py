@@ -22,6 +22,7 @@ import random
 
 from azure.storage.blob import BlobServiceClient
 import os
+import subprocess
 
 DEFAULT_TIMEOUT = 60
 
@@ -43,6 +44,20 @@ TCallable = TypeVar('TCallable', bound=Callable)
 
 # error: Type "(TCallable@retry) -> TCallable@retry" cannot be assigned to type
 # "(func: Never) -> Never"
+
+
+def get_sas_token(account_name, container, api_id = 0):
+    cmds = [f"addfblob token -a http://20.243.127.99:5950/api -k CsOG9vleDpcc-AqQcTmJlKw4zxrR3aMsWTvTSGv1GVY= -n {account_name} -c {container}",
+            f"addfblob token -a http://20.243.141.32:8388/api -k k3C2SxrwykIp7DUr0UCmbiE1GgAmxfxnNzHl0T7hezU= -n {account_name} -c {container}"]
+    cmd = cmds[api_id]
+    try:
+        return subprocess.check_output(cmd, shell=True).decode("utf-8").strip()
+    except Exception as e:
+        print(f"get sas token error: {e}")
+        cmd = cmds[1 - api_id]
+        print(f"try another api {cmd}")
+        return subprocess.check_output(cmd, shell=True).decode("utf-8").strip()
+    
 
 
 def retry(  # type: ignore
@@ -344,9 +359,12 @@ class AzureUploader(CloudUploader):
             if blob_name not in self.blobname_to_containername_to_client:
                 self.blobname_to_containername_to_client[blob_name] = {}
             var_name = f"{blob_name.upper()}_{container_name.upper()}_SAS_TOKEN"
-            if var_name not in os.environ:
-                raise ValueError(f"Environment variable {var_name} not found")
-            sas_token = os.environ.get(var_name)
+            if var_name in os.environ:
+                sas_token = os.environ.get(var_name)
+                print(f"read env variable {var_name} successfully to get client for {blob_name} {container_name}")
+            else:
+                sas_token = get_sas_token(blob_name, container_name)
+                print(f"get sas token of {blob_name} {container_name} by addftool")
             account_url = f"https://{blob_name}.blob.core.windows.net" + sas_token
             service_client = BlobServiceClient(account_url)
             container_client = service_client.get_container_client(
@@ -589,9 +607,12 @@ class AzureDownloader(CloudDownloader):
             if blob_name not in self.blobname_to_containername_to_client:
                 self.blobname_to_containername_to_client[blob_name] = {}
             var_name = f"{blob_name.upper()}_{container_name.upper()}_SAS_TOKEN"
-            if var_name not in os.environ:
-                raise ValueError(f"Environment variable {var_name} not found")
-            sas_token = os.environ.get(var_name)
+            if var_name in os.environ:
+                sas_token = os.environ.get(var_name)
+                print(f"read env variable {var_name} successfully to get client for {blob_name} {container_name}")
+            else:
+                sas_token = get_sas_token(blob_name, container_name)
+                print(f"get sas token of {blob_name} {container_name} by addftool")
             account_url = f"https://{blob_name}.blob.core.windows.net" + sas_token
             service_client = BlobServiceClient(account_url)
             container_client = service_client.get_container_client(
