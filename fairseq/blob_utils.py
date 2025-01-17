@@ -23,6 +23,8 @@ import random
 from azure.storage.blob import BlobServiceClient
 import os
 import subprocess
+import requests
+POOL_MAXSIZE = 1000
 
 DEFAULT_TIMEOUT = 60
 
@@ -361,17 +363,20 @@ class AzureUploader(CloudUploader):
             var_name = f"{blob_name.upper()}_{container_name.upper()}_SAS_TOKEN"
             if var_name in os.environ:
                 sas_token = os.environ.get(var_name)
-                print(f"read env variable {var_name} successfully to get client for {blob_name} {container_name}")
+                print(f"get sas token by env variable {var_name} successfully to get client for {blob_name} {container_name}")
             else:
                 sas_token = get_sas_token(blob_name, container_name)
-                print(f"get sas token of {blob_name} {container_name} by addftool")
+                print(f"get sas token by addftool: {blob_name} {container_name}")
             account_url = f"https://{blob_name}.blob.core.windows.net" + sas_token
-            service_client = BlobServiceClient(account_url)
+            session = requests.Session()
+            adapter = requests.adapters.HTTPAdapter(pool_maxsize=POOL_MAXSIZE)
+            session.mount('https://', adapter)
+            service_client = BlobServiceClient(account_url, session = session)
             container_client = service_client.get_container_client(
                 container=container_name)
             self.blobname_to_containername_to_client[blob_name][container_name] = container_client
-            print(
-                f"AzureUploader read env variable {var_name} successfully to get client for {blob_name} {container_name}")
+            # print(
+                # f"AzureUploader successfully to get client for {blob_name} {container_name}")
         return self.blobname_to_containername_to_client[blob_name][container_name]
 
     def upload_file(self, filename: str):
@@ -423,7 +428,7 @@ class AzureUploader(CloudUploader):
                         progress_hook=lambda bytes_transferred, _: pbar.update(
                             bytes_transferred),
                         overwrite=True,
-                        max_concurrency=8)
+                        max_concurrency=32)
             self.clear_local(local=local_filename)
 
         _upload_file()
@@ -473,7 +478,7 @@ class AzureUploader(CloudUploader):
                         progress_hook=lambda bytes_transferred, _: pbar.update(
                             bytes_transferred),
                         overwrite=True,
-                        max_concurrency=8)
+                        max_concurrency=32)
             if not keep_local:
                 self.clear_local(local=local_filename)
 
@@ -609,17 +614,20 @@ class AzureDownloader(CloudDownloader):
             var_name = f"{blob_name.upper()}_{container_name.upper()}_SAS_TOKEN"
             if var_name in os.environ:
                 sas_token = os.environ.get(var_name)
-                print(f"read env variable {var_name} successfully to get client for {blob_name} {container_name}")
+                print(f"get sas token by env variable {var_name} successfully to get client for {blob_name} {container_name}")
             else:
                 sas_token = get_sas_token(blob_name, container_name)
-                print(f"get sas token of {blob_name} {container_name} by addftool")
+                print(f"get sas token by addftool: {blob_name} {container_name}")
             account_url = f"https://{blob_name}.blob.core.windows.net" + sas_token
-            service_client = BlobServiceClient(account_url)
+            session = requests.Session()
+            adapter = requests.adapters.HTTPAdapter(pool_maxsize=POOL_MAXSIZE)
+            session.mount('https://', adapter)
+            service_client = BlobServiceClient(account_url, session = session)
             container_client = service_client.get_container_client(
                 container=container_name)
             self.blobname_to_containername_to_client[blob_name][container_name] = container_client
-            print(
-                f"AzureDownloader read env variable {var_name} successfully to get client for {blob_name} {container_name}")
+            # print(
+            #     f"AzureDownloader read env variable {var_name} successfully to get client for {blob_name} {container_name}")
         return self.blobname_to_containername_to_client[blob_name][container_name]
 
     @staticmethod
@@ -651,7 +659,7 @@ class AzureDownloader(CloudDownloader):
         blob_client = container_client.get_blob_client(blob=relative_path)
         local_tmp = local + '.tmp'
         with open(local_tmp, 'wb') as my_blob:
-            blob_data = blob_client.download_blob(max_concurrency=8)
+            blob_data = blob_client.download_blob(max_concurrency=32)
             blob_data.readinto(my_blob)
         os.rename(local_tmp, local)
 
