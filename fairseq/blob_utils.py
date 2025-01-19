@@ -369,7 +369,7 @@ class AzureUploader(CloudUploader):
                 print(f"get sas token by addftool: {blob_name} {container_name}")
             account_url = f"https://{blob_name}.blob.core.windows.net" + sas_token
             session = requests.Session()
-            adapter = requests.adapters.HTTPAdapter(pool_connections=1000, pool_maxsize=1000, max_retries=5, pool_block=True)
+            adapter = requests.adapters.HTTPAdapter(pool_connections=1000, pool_maxsize=1000, max_retries=5, pool_block=False)
             session.mount('https://', adapter)
             service_client = BlobServiceClient(account_url, session = session)
             container_client = service_client.get_container_client(
@@ -620,7 +620,7 @@ class AzureDownloader(CloudDownloader):
                 print(f"get sas token by addftool: {blob_name} {container_name}")
             account_url = f"https://{blob_name}.blob.core.windows.net" + sas_token
             session = requests.Session()
-            adapter = requests.adapters.HTTPAdapter(pool_connections=1000, pool_maxsize=1000, max_retries=5, pool_block=True)
+            adapter = requests.adapters.HTTPAdapter(pool_connections=1000, pool_maxsize=1000, max_retries=5, pool_block=False)
             session.mount('https://', adapter)
             service_client = BlobServiceClient(account_url, session = session)
             container_client = service_client.get_container_client(
