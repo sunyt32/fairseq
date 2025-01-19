@@ -428,7 +428,7 @@ class AzureUploader(CloudUploader):
                         progress_hook=lambda bytes_transferred, _: pbar.update(
                             bytes_transferred),
                         overwrite=True,
-                        max_concurrency=64)
+                        max_concurrency=8)
             self.clear_local(local=local_filename)
 
         _upload_file()
@@ -478,7 +478,7 @@ class AzureUploader(CloudUploader):
                         progress_hook=lambda bytes_transferred, _: pbar.update(
                             bytes_transferred),
                         overwrite=True,
-                        max_concurrency=64)
+                        max_concurrency=8)
             if not keep_local:
                 self.clear_local(local=local_filename)
 
@@ -659,7 +659,7 @@ class AzureDownloader(CloudDownloader):
         blob_client = container_client.get_blob_client(blob=relative_path)
         local_tmp = local + '.tmp'
         with open(local_tmp, 'wb') as my_blob:
-            blob_data = blob_client.download_blob(max_concurrency=64)
+            blob_data = blob_client.download_blob(max_concurrency=8)
             blob_data.readinto(my_blob)
         os.rename(local_tmp, local)
 
