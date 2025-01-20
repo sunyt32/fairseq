@@ -639,7 +639,7 @@ def all_gather_list(data, group=None, max_size=16384):
 
     if group is None:
         group = get_global_group()
-    rank = get_rank(group=group)
+    # rank = get_rank(group=group)
     world_size = get_world_size(group=group)
 
     all_data = [None for _ in range(world_size)]
