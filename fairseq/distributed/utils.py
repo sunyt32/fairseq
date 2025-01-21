@@ -622,6 +622,32 @@ def all_gather(tensor, group, return_tensor=False):
             return tensor_list
 
 
+def all_gather_list_native(data, group=None):
+    """Gathers arbitrary data from all nodes into a list.
+
+    Similar to :func:`~torch.distributed.all_gather` but for arbitrary Python
+    data. Note that *data* must be picklable and any CUDA tensors will be moved
+    to CPU and returned on CPU as well.
+
+    Args:
+        data (Any): data from the local worker to be gathered on other workers
+        group: group of the collective
+        max_size (int, optional): maximum size of the data to be gathered
+            across workers
+    """
+    
+    if group is None:
+        group = get_global_group()
+    # rank = get_rank(group=group)
+    world_size = get_world_size(group=group)
+
+    all_data = [None for _ in range(world_size)]
+    torch.distributed.all_gather_object(
+        all_data, data, group=group
+    )
+    return all_data
+
+
 def all_gather_list(data, group=None, max_size=16384):
     """Gathers arbitrary data from all nodes into a list.
 
