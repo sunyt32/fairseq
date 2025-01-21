@@ -141,7 +141,8 @@ class Trainer(object):
                     "detected shared parameter: {} <- {}".format(shared_param[0], path)
                 )
                 _set_module_by_path(self._model, path, ref)
-        logger.info(metrics.get_nvidia_smi_gpu_memory_stats_str())
+        if cfg.common.log_nvidia_smi:
+            logger.info(metrics.get_nvidia_smi_gpu_memory_stats_str())
 
         self._dummy_batch = None  # indicates we don't have a dummy batch at first
         self._lr_scheduler = None

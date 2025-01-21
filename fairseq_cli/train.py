@@ -71,7 +71,8 @@ def main(cfg: FairseqConfig) -> None:
     checkpoint_utils.verify_checkpoint_directory(cfg.checkpoint.save_dir)
 
     # Print nvidia smi stats
-    logger.info(metrics.get_nvidia_smi_gpu_memory_stats_str())
+    if cfg.common.log_nvidia_smi:
+        logger.info(metrics.get_nvidia_smi_gpu_memory_stats_str())
 
     # Print args
     logger.info(cfg)
@@ -126,7 +127,8 @@ def main(cfg: FairseqConfig) -> None:
             sum(getattr(p, "_orig_size", p).numel() for p in model.parameters() if is_expert_param(p) and p.requires_grad),
         )
     )
-    logger.info(metrics.get_nvidia_smi_gpu_memory_stats_str())
+    if cfg.common.log_nvidia_smi:
+        logger.info(metrics.get_nvidia_smi_gpu_memory_stats_str())
 
     # Load valid dataset (we load training data below, based on the latest checkpoint)
     # We load the valid dataset AFTER building the model
@@ -163,7 +165,8 @@ def main(cfg: FairseqConfig) -> None:
             cfg.dataset.batch_size,
         )
     )
-    logger.info(metrics.get_nvidia_smi_gpu_memory_stats_str())
+    if cfg.common.log_nvidia_smi:
+        logger.info(metrics.get_nvidia_smi_gpu_memory_stats_str())
 
     # Load the latest checkpoint if one is available and restore the
     # corresponding train iterator
