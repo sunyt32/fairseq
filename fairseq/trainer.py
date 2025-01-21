@@ -177,7 +177,7 @@ class Trainer(object):
         if self.cuda:
             self.cuda_env = utils.CudaEnvironment()
             if self.data_parallel_world_size > 1:
-                self.cuda_env_arr = distributed_utils.all_gather_list(
+                self.cuda_env_arr = distributed_utils.all_gather_list_native(
                     self.cuda_env, group=distributed_utils.get_global_group()
                 )
             else:
