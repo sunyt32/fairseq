@@ -379,60 +379,6 @@ class AzureUploader(CloudUploader):
                 # f"AzureUploader successfully to get client for {blob_name} {container_name}")
         return self.blobname_to_containername_to_client[blob_name][container_name]
 
-    def upload_file(self, filename: str):
-        """Upload file from local instance to Microsoft Azure bucket.
-
-        Args:
-            filename (str): File to upload.
-        """
-
-        @retry(num_attempts=self.retry)
-        def _upload_file():
-            local_filename = os.path.join(self.local, filename)
-            local_filename = local_filename.replace('\\', '/')
-            remote_filename = os.path.join(
-                self.remote, filename)  # pyright: ignore
-            remote_filename = remote_filename.replace('\\', '/')
-            # obj = urllib.parse.urlparse(remote_filename)
-            # logger.debug(f'Uploading to {remote_filename}')
-            file_size = os.stat(local_filename).st_size
-            # print("debug: file_name", filename)
-            # print("debug: local_filename", local_filename)
-            # print("debug: remote_filename", remote_filename)
-            # print("debug: obj.netloc", obj.netloc)
-            # print("debug: obj.path.lstrip('/'), ", obj.path.lstrip('/'))
-            stripped_str = remote_filename[len("azure://"):]
-            parts = stripped_str.split('/', 2)
-            blob_name = parts[0]
-            container_name = parts[1]
-            relative_path = parts[2]
-            # print("debug: blob_name", blob_name)
-            # print("debug: container_name", container_name)
-            # print("debug: relative_path", relative_path)
-            # if blob_name not in self.blobname_to_azure_service:
-            #     self.blobname_to_azure_service[blob_name] = self.azure_service.get_blob_service_client(container=blob_name)
-
-            # container_client = self.azure_service.get_container_client(container=obj.netloc)
-            container_client = self._get_container_client(
-                blob_name, container_name)
-
-            with tqdm.tqdm(total=file_size,
-                           unit='B',
-                           unit_scale=True,
-                           desc=f'Uploading to {remote_filename}',
-                           disable=(not self.progress_bar)) as pbar:
-                with open(local_filename, 'rb') as data:
-                    container_client.upload_blob(
-                        name=relative_path,
-                        data=data,
-                        progress_hook=lambda bytes_transferred, _: pbar.update(
-                            bytes_transferred),
-                        overwrite=True,
-                        max_concurrency=8)
-            self.clear_local(local=local_filename)
-
-        _upload_file()
-
     def upload_file(self, local_path: str, remote_path: str, keep_local: bool = True):
         """Similar to the upload_file function above, but allows specifying local_path and remote_path, 
         and choosing whether to keep the local file (default is to keep, btw the function above does not keep the local file).
