@@ -409,6 +409,9 @@ def validate_and_save(
 
     # Save checkpoint
     if do_save or should_stop:
+        logger.info("*" * 100)
+        logger.info("begin save checkpoint")
+        logger.info(f"do_save: {do_save}, should_stop: {should_stop}")
         checkpoint_utils.save_checkpoint(
             cfg.checkpoint, trainer, epoch_itr, valid_losses[0], training_finished=should_stop,
             async_callback_fn=functools.partial(post_checkpoint_callback, cfg) if cfg.checkpoint.s3_upload_path else None,
