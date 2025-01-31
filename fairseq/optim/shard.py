@@ -8,21 +8,11 @@ from typing import Any, Dict
 from fairseq.distributed import utils
 
 
-try:
-    from fairscale.optim import OSS
-
-    _has_fairscale = True
-except ImportError:
-    _has_fairscale = False
+from torch.distributed.optim import ZeroRedundancyOptimizer
 
 
 def shard_(optimizer, group):
-    if not _has_fairscale:
-        raise ImportError(
-            "\n\nPlease install the fairscale package:" "\n\n  pip install fairscale"
-        )
-
-    class FairseqOSS(OSS):
+    class FairseqOSS(ZeroRedundancyOptimizer):
         @property
         def disable_mem_eff_fp16_loading_hack(self):
             return True
@@ -44,7 +34,7 @@ def shard_(optimizer, group):
             return utils.broadcast_object(
                 state_dict,
                 src_rank=0,
-                group=self.group,
+                group=self.process_group,
             )
 
     torch_optimizer = optimizer.optimizer
@@ -53,6 +43,6 @@ def shard_(optimizer, group):
     optimizer.optimizer = FairseqOSS(
         torch_optimizer.param_groups,
         optim_cls,
-        group=group,
+        process_group=group,
         **optimizer.optimizer_config
     )
