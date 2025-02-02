@@ -737,10 +737,12 @@ def copydir(src_dir: str, dst_dir: str, process_count: int = 1):
     elif not src_is_azure and dst_is_azure:
         # Case 2: 本地 -> Azure
         lines = []
-        for root, dirs, files in os.walk(src_dir):
-            for name in files:
-                filepath = os.path.join(root, name)
-                lines.append((filepath, filepath.replace(src_dir, dst_dir)))
+        for root, __, files in os.walk(src_dir):
+            for file in files:
+                    file_src_path = os.path.join(root, file)
+                    relative_path = os.path.relpath(file_src_path, os.path.dirname(src_dir))
+                    file_dest_path = os.path.join(dst_dir, relative_path)
+                    lines.append((file_src_path, file_dest_path))
     else:
         # Case 3 和 Case 4: Azure -> 本地 和 Azure -> Azure
         if not dst_is_azure:
