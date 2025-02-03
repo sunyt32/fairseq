@@ -30,8 +30,11 @@ class FairseqShampooConfig(FairseqDataclass):
     adam_eps: float = field(
         default=1e-8, metadata={"help": "epsilon for Adam optimizer"}
     )
+    shampoo_eps: float = field(
+        default=1e-14, metadata={"help": "epsilon for Shampoo optimizer"}
+    )
     shampoo_update_freq: int = field(
-        default=16, metadata={"help": "update shampoo matrix every N steps"}
+        default=1, metadata={"help": "update shampoo matrix every N steps"}
     )
     shampoo_max_preconditioner_dim: int = field(
         default=1024, metadata={"help": "max dimension of preconditioner"}
@@ -52,7 +55,7 @@ class FairseqShampoo(FairseqOptimizer):
             params,
             lr=cfg.lr[0],
             betas=eval(cfg.adam_betas),
-            epsilon=cfg.adam_eps,
+            epsilon=cfg.shampoo_eps,
             weight_decay=cfg.weight_decay,
             precondition_frequency=cfg.shampoo_update_freq,
             max_preconditioner_dim=cfg.shampoo_max_preconditioner_dim,
