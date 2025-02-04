@@ -17,7 +17,7 @@ from fairseq.optim import FairseqOptimizer, register_optimizer
 from omegaconf import II, DictConfig
 
 from distributed_shampoo.distributed_shampoo import DistributedShampoo
-from distributed_shampoo.shampoo_types import AdamGraftingConfig
+from distributed_shampoo.shampoo_types import AdamGraftingConfig, DDPShampooConfig, CommunicationDType
 
 logger = logging.getLogger(__name__)
 
@@ -33,11 +33,14 @@ class FairseqShampooConfig(FairseqDataclass):
     shampoo_eps: float = field(
         default=1e-14, metadata={"help": "epsilon for Shampoo optimizer"}
     )
-    shampoo_update_freq: int = field(
+    optim_update_freq: int = field(
         default=1, metadata={"help": "update shampoo matrix every N steps"}
     )
-    shampoo_max_preconditioner_dim: int = field(
-        default=1024, metadata={"help": "max dimension of preconditioner"}
+    optim_max_preconditioner_dim: int = field(
+        default=8192, metadata={"help": "max dimension of preconditioner"}
+    )
+    shampoo_num_trainers_per_group: int = field(
+        default=1, metadata={"help": "number of GPUs per distributed process group for distributed computation/memory"}
     )
     weight_decay: float = field(default=0.0, metadata={"help": "weight decay"})
     # TODO common vars below in parent
@@ -62,9 +65,13 @@ class FairseqShampoo(FairseqOptimizer):
             grafting_config=AdamGraftingConfig(
                 beta2=eval(cfg.adam_betas)[1],
                 epsilon=cfg.adam_eps,
+            ), 
+            distributed_config=DDPShampooConfig(
+                communication_dtype=CommunicationDType.FP32,
+                num_trainers_per_group=cfg.shampoo_num_trainers_per_group,
+                communicate_params=False,
             ),
         )
-        # self._optimizer = Shampoo(params, **self.optimizer_config)
 
     @property
     def optimizer_config(self):
