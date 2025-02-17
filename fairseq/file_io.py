@@ -205,7 +205,7 @@ class PathManager:
 
 
 def torch_load_cpu(path):
-    state = torch.load(path, map_location=torch.device("cpu"))
+    state = torch.load(path, map_location=torch.device("cpu"), weights_only=False)
     # If model was trained with fp16, model from loaded state_dict can be moved to fp16
     if isinstance(state, dict) and 'cfg' in state:
         if state['cfg']['common']['fp16'] or state['cfg']['common']['memory_efficient_fp16']:
