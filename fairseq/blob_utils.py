@@ -19,11 +19,15 @@ from typing import Any, Callable, Optional, Sequence, TypeVar, Union, cast, over
 import tqdm
 from time import sleep
 import random
+import queue
+import threading
 
 from azure.storage.blob import BlobServiceClient
 import os
 import subprocess
 import requests
+import atexit
+
 POOL_MAXSIZE = 48
 
 DEFAULT_TIMEOUT = 60
@@ -41,9 +45,13 @@ UPLOADERS = {
     '': 'LocalUploader',
 }
 
-
+logger = logging.getLogger(__name__)
 TCallable = TypeVar('TCallable', bound=Callable)
 
+
+_upload_queue = queue.Queue()
+_upload_thread = None
+_stop_event = threading.Event()
 # error: Type "(TCallable@retry) -> TCallable@retry" cannot be assigned to type
 # "(func: Never) -> Never"
 
@@ -709,7 +717,40 @@ def copyfile(src: str, dst: str):
         _get_storage().download(src, tmp_file_path)
         _get_storage().upload(tmp_file_path, dst)
         os.remove(tmp_file_path)
+    logger.info(f"Upload blob: {src} to {dst} finished.")
 
+def _upload_worker():
+    while not _stop_event.is_set():
+        try:
+            src, dst = _upload_queue.get(timeout=1)
+            try:
+                copyfile(src, dst)
+            except Exception as e:
+                logger.error(f"Async copyfile error: {e}")
+            finally:
+                _upload_queue.task_done()
+        except queue.Empty:
+            continue
+
+def async_copyfile(src: str, dst: str):
+    global _upload_thread
+    if _upload_thread is None or not _upload_thread.is_alive():
+        _stop_event.clear()
+        _upload_thread = threading.Thread(target=_upload_worker, daemon=True)
+        _upload_thread.start()
+    
+    _upload_queue.put((src, dst))
+    logger.info(f"Async copyfile: {src} to {dst} started.")
+
+def shutdown_async_copyfile():
+    global _upload_thread
+    if _upload_thread is not None:
+        _stop_event.set()
+        _upload_queue.join()
+        _upload_thread.join()
+        _upload_thread = None
+
+atexit.register(shutdown_async_copyfile)
 
 def copyfile_wrapper(line):
     src, dst = line

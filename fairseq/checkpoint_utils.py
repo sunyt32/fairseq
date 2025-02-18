@@ -153,8 +153,7 @@ def save_checkpoint(
             for filename in os.listdir(_tmp_save_dir):
                 src_file = os.path.join(_tmp_save_dir, filename)
                 dest_file = os.path.join(cfg.blob_save_dir, filename)
-                logger.info(f"Upload blob: {src_file} to {dest_file}")
-                blob_utils.copyfile(src_file, dest_file)
+                blob_utils.async_copyfile(src_file, dest_file)
 
         write_timer.stop()
         logger.info(
