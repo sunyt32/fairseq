@@ -115,7 +115,7 @@ def save_checkpoint(
     #     extra_state.update({"best": save_checkpoint.best})
 
     if cfg.blob_save_dir.startswith("azure://"):
-        _tmp_save_dir = tempfile.mkdtemp()
+        _tmp_save_dir = os.environ.get('CKPT_TMP_DIR', tempfile.mkdtemp())
     else:
         _tmp_save_dir = cfg.save_dir
     checkpoints = [
