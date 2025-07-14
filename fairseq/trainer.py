@@ -24,7 +24,7 @@ from fairseq.file_io import PathManager
 from fairseq.logging import meters, metrics
 from fairseq.nan_detector import NanDetector
 from fairseq.optim import lr_scheduler
-from torchscale.component.xmoe.global_groups import get_moe_group, _find_my_group_index
+from torchscale.component.xmoe.global_groups import get_moe_group
 import torch.distributed as dist
 
 from omegaconf import OmegaConf
@@ -32,22 +32,22 @@ import re
 
 logger = logging.getLogger(__name__)
 
-
-def get_zero_group(num_gpus):
+def get_zero_group(data_parallel_group, zero_group_size):
     if torch.distributed.is_initialized():
         if not hasattr(get_zero_group, "_zero_groups"):
-            world_size = distributed_utils.get_global_world_size()
+            dp_world_size = data_parallel_group.size()
+            dp_idx = data_parallel_group.rank()
+            assert dp_world_size % zero_group_size == 0
 
-            assert world_size % num_gpus == 0
-            ranks_per_group = world_size // num_gpus
-            zero_groups = [[i * num_gpus + j for j in range(num_gpus)]
+            all_global_ranks = [None for _ in range(dp_world_size)]
+            dist.all_gather_object(all_global_ranks, dist.get_rank(), group=data_parallel_group)
+
+            ranks_per_group = dp_world_size // zero_group_size
+            zero_groups = [[all_global_ranks[i * zero_group_size + j] for j in range(zero_group_size)]
                                 for i in range(ranks_per_group)]
 
-            get_zero_group._zero_group_idx = zero_groups
-            get_zero_group._zero_groups = [dist.new_group(g) for g in zero_groups]
-
-        my_group_idx = _find_my_group_index(get_zero_group._zero_group_idx)
-        return get_zero_group._zero_groups[my_group_idx]
+            get_zero_group._zero_group = dist.new_group(zero_groups[dp_idx // zero_group_size])
+        return get_zero_group._zero_group
 
 
 class Trainer(object):
@@ -159,7 +159,7 @@ class Trainer(object):
                 _, self.expert_group = get_moe_group(self.cfg.model.moe_expert_count)
             else:
                 if self.cfg.distributed_training.zero_group_size > 0:
-                    self.expert_group = get_zero_group(torch.cuda.device_count() * self.cfg.distributed_training.zero_group_size)
+                    self.expert_group = get_zero_group(self.data_parallel_process_group, self.cfg.distributed_training.zero_group_size)
                 else:
                     # too many cards in the group would make ZeRO inefficient
                     self.expert_group = self.data_parallel_process_group
